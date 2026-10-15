@@ -1,2 +1,2 @@
-fastapi
-uvicorn[standard]
+# Needed only for live LLM calls; offline mode uses the standard library alone.
+anthropic>=1.14.0
