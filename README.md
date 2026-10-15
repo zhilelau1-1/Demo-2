@@ -18,14 +18,14 @@ make test       # unit and end-to-end tests (offline provider, no network)
 make clean      # delete generated artifacts
 ```
 
-The pipeline needs only Python 3.10+ and the standard library. Live LLM calls also need `pip install -r requirements.txt` and Anthropic credentials, for example `ANTHROPIC_API_KEY`.
+The pipeline needs only Python 3.10+ and the standard library. Live LLM calls also need `pip install -r requirements.txt` and an `ANTHROPIC_API_KEY` in the environment, for example `ANTHROPIC_API_KEY=sk-ant-... make run`. Live mode uses only that variable. Saved logins (`ant auth login` profiles, OAuth tokens) are ignored, so a run never bills whichever account happens to be logged in on the machine.
 
 ## LLM modes
 
 | `--llm-mode` | Behaviour |
 | --- | --- |
-| `auto` (default) | Live when Anthropic credentials are available, otherwise offline |
-| `live` | Anthropic Messages API with JSON-schema structured output and the server-side refusal fallback. Default model `claude-opus-5-5` (`--model`, `--effort`) |
+| `auto` (default) | Live when `ANTHROPIC_API_KEY` is set, otherwise offline |
+| `live` | Anthropic Messages API with JSON-schema structured output and the server-side refusal fallback. Default model `claude-sonnet-5-5` (`--model`, `--effort`) |
 | `offline` | Deterministic rule-based provider (`pipeline/offline.py`). It takes the same payloads, follows the same schemas, and is logged as `provider: "offline-rules"` |
 | `replay` | Serves recorded live responses from `.llm_cache/` by prompt hash. A cache miss is an error |
 
@@ -78,4 +78,4 @@ To resume from a stage, run `python -m pipeline.run --from-stage PRIORITIES_COMP
 ## Limitations
 
 - Offline translation is glossary-based and covers only Malay and Spanish. Indonesian notes are mostly handled, but are labelled as Malay. French, German and several non-Latin scripts are detected but not translated. Untranslated notes are recorded as such, and validation fails on them rather than passing silently. Use live mode for arbitrary languages.
-- The live path has been checked up to the API call (request construction and error handling). A full live run needs credentials.
+- The live path has been checked up to the API call (request construction and error handling). A full live run needs an `ANTHROPIC_API_KEY`.

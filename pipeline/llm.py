@@ -2,10 +2,13 @@
 replay cache.
 
 Modes:
-  live    - call the Anthropic API (requires credentials and the `anthropic` package)
+  live    - call the Anthropic API (requires ANTHROPIC_API_KEY and the `anthropic` package)
   offline - deterministic rule-based provider (no network); logged as provider "offline-rules"
   replay  - serve recorded live responses from .llm_cache/ by prompt hash; fails on a cache miss
-  auto    - live when Anthropic credentials are available, otherwise offline
+  auto    - live when ANTHROPIC_API_KEY is set, otherwise offline
+
+Only an explicitly supplied ANTHROPIC_API_KEY enables live calls. Saved logins (`ant auth login`
+profiles, OAuth tokens) are deliberately ignored, so a run never bills whoever happens to be logged in.
 """
 
 import json
@@ -18,7 +21,7 @@ from . import offline
 from .artifacts import canonical_json, display_path, read_json, sha256_text, utc_now, write_json
 from .prompts import PROMPT_VERSION, SYSTEM_PROMPT
 
-DEFAULT_MODEL = "claude-opus-5-5"
+DEFAULT_MODEL = "claude-sonnet-5-5"
 DEFAULT_EFFORT = "medium"
 MAX_ATTEMPTS = 2
 
@@ -28,13 +31,13 @@ class LLMError(RuntimeError):
 
 
 def anthropic_available():
+    if not os.environ.get("ANTHROPIC_API_KEY"):
+        return False
     try:
         import anthropic  # noqa: F401
     except ImportError:
         return False
-    if any(os.environ.get(k) for k in ("ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN", "ANTHROPIC_PROFILE")):
-        return True
-    return (Path.home() / ".config" / "anthropic").is_dir()
+    return True
 
 
 class AnthropicProvider:
@@ -44,7 +47,8 @@ class AnthropicProvider:
         import anthropic
 
         self._anthropic = anthropic
-        self.client = anthropic.Anthropic()
+        # Pass the key explicitly so the SDK never falls back to a saved login profile.
+        self.client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
         self.model = model
         self.effort = effort
         self.use_fallbacks = os.environ.get("LLM_FALLBACKS", "default") != "off"
@@ -98,7 +102,7 @@ class LLMClient:
         self.resolved_mode = mode
         if mode == "live":
             if not anthropic_available():
-                raise LLMError("live mode needs the `anthropic` package and Anthropic credentials (e.g. ANTHROPIC_API_KEY)")
+                raise LLMError("live mode needs the `anthropic` package and ANTHROPIC_API_KEY set")
             self.provider = AnthropicProvider(model, effort)
         elif mode == "offline":
             self.provider = OfflineProvider()
